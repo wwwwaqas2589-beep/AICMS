@@ -3,14 +3,12 @@ const router = express.Router();
 
 const supabase = require("../config/supabase");
 
-
 // =====================================================
 // GET ALL RESOURCE UTILIZATION
 // =====================================================
 
 router.get("/", async (req, res) => {
   try {
-
     const { data, error } = await supabase
       .from("resource_utilization")
       .select("*")
@@ -31,25 +29,28 @@ router.get("/", async (req, res) => {
     });
 
   } catch (error) {
-
     return res.status(500).json({
       success: false,
       message: "Internal server error",
       error: error.message
     });
-
   }
 });
 
-
 // =====================================================
-// GET BY PROJECT
+// GET RESOURCE UTILIZATION BY PROJECT
 // =====================================================
 
 router.get("/project/:projectId", async (req, res) => {
   try {
-
     const projectId = Number(req.params.projectId);
+
+    if (!Number.isInteger(projectId)) {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid project ID"
+      });
+    }
 
     const { data, error } = await supabase
       .from("resource_utilization")
@@ -73,25 +74,28 @@ router.get("/project/:projectId", async (req, res) => {
     });
 
   } catch (error) {
-
     return res.status(500).json({
       success: false,
       message: "Internal server error",
       error: error.message
     });
-
   }
 });
 
-
 // =====================================================
-// GET BY ACTIVITY
+// GET RESOURCE UTILIZATION BY ACTIVITY
 // =====================================================
 
 router.get("/activity/:activityId", async (req, res) => {
   try {
-
     const activityId = Number(req.params.activityId);
+
+    if (!Number.isInteger(activityId)) {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid activity ID"
+      });
+    }
 
     const { data, error } = await supabase
       .from("resource_utilization")
@@ -115,16 +119,13 @@ router.get("/activity/:activityId", async (req, res) => {
     });
 
   } catch (error) {
-
     return res.status(500).json({
       success: false,
       message: "Internal server error",
       error: error.message
     });
-
   }
 });
-
 
 // =====================================================
 // CREATE RESOURCE UTILIZATION
@@ -132,30 +133,88 @@ router.get("/activity/:activityId", async (req, res) => {
 
 router.post("/", async (req, res) => {
   try {
-
     const {
       company_id,
       project_id,
       activity_id,
       resource_planning_id,
+
       resource_type,
       resource_code,
       resource_name,
+
       utilization_date,
+
       planned_quantity,
       actual_quantity,
+
       planned_hours,
       actual_hours,
+
       planned_rate,
       actual_rate,
-      planned_cost,
-      actual_cost,
+
       productivity_actual,
       productivity_variance,
+
       status,
       remarks
     } = req.body;
 
+    // =================================================
+    // VALIDATION
+    // =================================================
+
+    if (
+      project_id === undefined ||
+      activity_id === undefined ||
+      !resource_type ||
+      !utilization_date
+    ) {
+      return res.status(400).json({
+        success: false,
+        message:
+          "project_id, activity_id, resource_type and utilization_date are required"
+      });
+    }
+
+    const finalProjectId = Number(project_id);
+    const finalActivityId = Number(activity_id);
+
+    if (
+      !Number.isInteger(finalProjectId) ||
+      !Number.isInteger(finalActivityId)
+    ) {
+      return res.status(400).json({
+        success: false,
+        message: "project_id and activity_id must be valid integers"
+      });
+    }
+
+    // =================================================
+    // RESOURCE TYPE
+    // =================================================
+
+    const normalizedResourceType =
+      String(resource_type).trim().toUpperCase();
+
+    const allowedResourceTypes = [
+      "MANPOWER",
+      "EQUIPMENT",
+      "MATERIAL"
+    ];
+
+    if (!allowedResourceTypes.includes(normalizedResourceType)) {
+      return res.status(400).json({
+        success: false,
+        message:
+          "resource_type must be MANPOWER, EQUIPMENT or MATERIAL"
+      });
+    }
+
+    // =================================================
+    // NUMERIC VALUES
+    // =================================================
 
     const finalPlannedQuantity =
       Number(planned_quantity || 0);
@@ -175,110 +234,235 @@ router.post("/", async (req, res) => {
     const finalActualRate =
       Number(actual_rate || 0);
 
+    // =================================================
+    // VALIDATE NUMBERS
+    // =================================================
 
-    const calculatedPlannedCost =
-      planned_cost !== undefined
-        ? Number(planned_cost)
-        : finalPlannedQuantity * finalPlannedRate;
+    const numericValues = [
+      finalPlannedQuantity,
+      finalActualQuantity,
+      finalPlannedHours,
+      finalActualHours,
+      finalPlannedRate,
+      finalActualRate
+    ];
 
+    if (numericValues.some((value) => !Number.isFinite(value))) {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid numeric value in resource utilization data"
+      });
+    }
 
-    const calculatedActualCost =
-      actual_cost !== undefined
-        ? Number(actual_cost)
-        : finalActualQuantity * finalActualRate;
+    // =================================================
+    // COST CALCULATION
+    //
+    // MANPOWER  = HOURS × HOURLY RATE
+    // EQUIPMENT = HOURS × HOURLY RATE
+    // MATERIAL  = QUANTITY × UNIT RATE
+    // =================================================
 
+    let calculatedPlannedCost = 0;
+    let calculatedActualCost = 0;
+
+    if (
+      normalizedResourceType === "MANPOWER" ||
+      normalizedResourceType === "EQUIPMENT"
+    ) {
+      calculatedPlannedCost =
+        finalPlannedHours * finalPlannedRate;
+
+      calculatedActualCost =
+        finalActualHours * finalActualRate;
+    }
+
+    if (normalizedResourceType === "MATERIAL") {
+      calculatedPlannedCost =
+        finalPlannedQuantity * finalPlannedRate;
+
+      calculatedActualCost =
+        finalActualQuantity * finalActualRate;
+    }
+
+    // =================================================
+    // VARIANCES
+    // =================================================
 
     const quantityVariance =
       finalActualQuantity - finalPlannedQuantity;
 
-
     const hoursVariance =
       finalActualHours - finalPlannedHours;
-
 
     const costVariance =
       calculatedActualCost - calculatedPlannedCost;
 
+    // =================================================
+    // UTILIZATION %
+    // =================================================
 
-    const utilizationPercent =
-      finalPlannedQuantity > 0
-        ? (finalActualQuantity / finalPlannedQuantity) * 100
-        : 0;
+    let utilizationPercent = 0;
 
+    if (
+      normalizedResourceType === "MANPOWER" ||
+      normalizedResourceType === "EQUIPMENT"
+    ) {
+      if (finalPlannedHours > 0) {
+        utilizationPercent =
+          (finalActualHours / finalPlannedHours) * 100;
+      }
+    } else {
+      if (finalPlannedQuantity > 0) {
+        utilizationPercent =
+          (finalActualQuantity / finalPlannedQuantity) * 100;
+      }
+    }
+
+    // =================================================
+    // ROUNDING
+    // =================================================
+
+    const round2 = (value) => {
+      return Number(Number(value || 0).toFixed(2));
+    };
+
+    const round3 = (value) => {
+      return Number(Number(value || 0).toFixed(3));
+    };
+
+    // =================================================
+    // INSERT INTO SUPABASE
+    // =================================================
 
     const { data, error } = await supabase
       .from("resource_utilization")
       .insert([
         {
-          company_id,
-          project_id,
-          activity_id,
-          resource_planning_id,
+          company_id:
+            company_id !== undefined && company_id !== null
+              ? Number(company_id)
+              : null,
 
-          resource_type,
-          resource_code,
-          resource_name,
+          project_id:
+            finalProjectId,
+
+          activity_id:
+            finalActivityId,
+
+          resource_planning_id:
+            resource_planning_id !== undefined &&
+            resource_planning_id !== null &&
+            resource_planning_id !== ""
+              ? Number(resource_planning_id)
+              : null,
+
+          resource_type:
+            normalizedResourceType,
+
+          resource_code:
+            resource_code || null,
+
+          resource_name:
+            resource_name || null,
 
           utilization_date,
 
-          planned_quantity: finalPlannedQuantity,
-          actual_quantity: finalActualQuantity,
+          planned_quantity:
+            round2(finalPlannedQuantity),
 
-          planned_hours: finalPlannedHours,
-          actual_hours: finalActualHours,
+          actual_quantity:
+            round2(finalActualQuantity),
 
-          planned_rate: finalPlannedRate,
-          actual_rate: finalActualRate,
+          planned_hours:
+            round2(finalPlannedHours),
 
-          planned_cost: calculatedPlannedCost,
-          actual_cost: calculatedActualCost,
+          actual_hours:
+            round2(finalActualHours),
 
-          quantity_variance: quantityVariance,
-          hours_variance: hoursVariance,
-          cost_variance: costVariance,
+          planned_rate:
+            round2(finalPlannedRate),
 
-          utilization_percent: utilizationPercent,
+          actual_rate:
+            round2(finalActualRate),
+
+          planned_cost:
+            round2(calculatedPlannedCost),
+
+          actual_cost:
+            round2(calculatedActualCost),
+
+          quantity_variance:
+            round2(quantityVariance),
+
+          hours_variance:
+            round2(hoursVariance),
+
+          cost_variance:
+            round2(costVariance),
+
+          utilization_percent:
+            round2(utilizationPercent),
 
           productivity_actual:
-            Number(productivity_actual || 0),
+            round3(productivity_actual || 0),
 
           productivity_variance:
-            Number(productivity_variance || 0),
+            round3(productivity_variance || 0),
 
-          status: status || "OPEN",
-          remarks
+          status:
+            status || "OPEN",
+
+          remarks:
+            remarks || null
         }
       ])
       .select()
       .single();
 
+    // =================================================
+    // DATABASE ERROR
+    // =================================================
 
     if (error) {
+      console.error(
+        "Resource utilization database error:",
+        error
+      );
+
       return res.status(500).json({
         success: false,
-        message: "Failed to create resource utilization",
+        message:
+          "Failed to create resource utilization",
         error: error.message
       });
     }
 
+    // =================================================
+    // SUCCESS
+    // =================================================
 
     return res.status(201).json({
       success: true,
-      message: "Resource utilization created successfully",
-      resource_utilization: data
+      message:
+        "Resource utilization created successfully",
+      resource_utilization:
+        data
     });
 
   } catch (error) {
+    console.error(
+      "Resource utilization server error:",
+      error
+    );
 
     return res.status(500).json({
       success: false,
-      message: "Internal server error",
+      message:
+        "Internal server error",
       error: error.message
     });
-
   }
 });
-
 
 // =====================================================
 // EXPORT ROUTER

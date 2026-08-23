@@ -21,6 +21,9 @@ const resourcePerformanceRouter = require("./src/routes/resourcePerformance");
 const resourceProductivityRouter = require("./src/routes/resourceProductivity");
 const resourceProductivitySummaryRouter = require("./src/routes/resourceProductivitySummary");
 const resourceCostRouter = require("./src/routes/resourceCost");
+const resourceCostPerformanceRouter = require("./src/routes/resourceCostPerformance");
+const resourceCostSummaryRouter = require("./src/routes/resourceCostSummary");
+const resourceUtilizationRouter = require("./src/routes/resourceUtilization");
 
 const dailyProductionRouter = require("./src/routes/dailyProduction");
 const dailyWorkRouter = require("./src/routes/dailyWork");
@@ -66,7 +69,8 @@ app.get("/", (req, res) => {
     success: true,
     status: "OK",
     system: "AICMS",
-    message: "AI Construction Management System Backend is running"
+    message:
+      "AI Construction Management System Backend is running"
   });
 });
 
@@ -203,6 +207,33 @@ app.use(
 );
 
 // =====================================================
+// RESOURCE COST PERFORMANCE
+// =====================================================
+
+app.use(
+  "/api/resource-cost-performance",
+  resourceCostPerformanceRouter
+);
+
+// =====================================================
+// RESOURCE COST SUMMARY
+// =====================================================
+
+app.use(
+  "/api/resource-cost-summary",
+  resourceCostSummaryRouter
+);
+
+// =====================================================
+// RESOURCE UTILIZATION
+// =====================================================
+
+app.use(
+  "/api/resource-utilization",
+  resourceUtilizationRouter
+);
+
+// =====================================================
 // DAILY PRODUCTION
 // =====================================================
 
@@ -243,7 +274,7 @@ app.use(
 // Payment
 //
 // File examples:
-// DWG / DXF / PDF / XLSX / XLS / CSV / DOCX / JPG / PNG
+// DWG / DXF / PDF / XLSX / XLS / CSV / DOCX / JPG / PNG / ZIP
 //
 // =====================================================
 
