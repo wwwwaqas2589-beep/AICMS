@@ -69,9 +69,37 @@ router.get("/:id", async (req, res) => {
       });
     }
 
+    // =================================================
+    // FINANCIAL CALCULATIONS
+    // =================================================
+
+    const plannedQuantity =
+      Number(data.planned_quantity || 0);
+
+    const plannedCost =
+      Number(data.planned_cost || 0);
+
+    const plannedUnitRate =
+      plannedQuantity > 0
+        ? plannedCost / plannedQuantity
+        : 0;
+
+    const plannedTotalCost =
+      plannedCost;
+
+    const activity = {
+      ...data,
+
+      planned_unit_rate:
+        Number(plannedUnitRate.toFixed(2)),
+
+      planned_total_cost:
+        Number(plannedTotalCost.toFixed(2))
+    };
+
     return res.json({
       success: true,
-      activity: data
+      activity
     });
 
   } catch (error) {
@@ -213,7 +241,7 @@ router.put("/:id", async (req, res) => {
       updateData.required_materials = required_materials;
 
     if (planned_hours !== undefined)
-      updateData.planned_hours = actual_hours;
+  updateData.planned_hours = planned_hours;
 
     if (actual_hours !== undefined)
       updateData.actual_hours = actual_hours;
@@ -274,3 +302,4 @@ router.put("/:id", async (req, res) => {
 // =====================================================
 
 module.exports = router;
+

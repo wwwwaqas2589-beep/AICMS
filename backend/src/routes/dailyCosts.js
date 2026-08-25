@@ -2,6 +2,68 @@ const express = require("express");
 const router = express.Router();
 
 const supabase = require("../config/supabase");
+// =====================================================
+// SYNC ACTIVITY ACTUAL COST
+// Source of truth: daily_costs
+// =====================================================
+
+async function syncActivityActualCost(activityId) {
+  if (
+    activityId === undefined ||
+    activityId === null
+  ) {
+    return {
+      success: true,
+      actualCost: 0
+    };
+  }
+
+  const { data: costs, error: costsError } =
+    await supabase
+      .from("daily_costs")
+      .select("total_cost")
+      .eq("activity_id", activityId);
+
+  if (costsError) {
+    throw new Error(
+      `Failed to calculate activity actual cost: ${costsError.message}`
+    );
+  }
+
+  const actualCost =
+    (costs || []).reduce(
+      (sum, item) =>
+        sum + Number(item.total_cost || 0),
+      0
+    );
+
+  const roundedActualCost =
+    Number(actualCost.toFixed(2));
+
+  const {
+    data: activity,
+    error: activityError
+  } = await supabase
+    .from("work_activities")
+    .update({
+      actual_cost: roundedActualCost
+    })
+    .eq("id", Number(activityId))
+    .select("id, actual_cost")
+    .single();
+
+  if (activityError) {
+    throw new Error(
+      `Failed to synchronize activity actual cost: ${activityError.message}`
+    );
+  }
+
+  return {
+    success: true,
+    actualCost: roundedActualCost,
+    activity
+  };
+}
 
 // =====================================================
 // GET ALL DAILY COSTS
@@ -330,6 +392,17 @@ router.post("/", async (req, res) => {
         });
       }
 
+            // =================================================
+      // SYNC WORK ACTIVITY ACTUAL COST
+      // =================================================
+
+      if (
+        activity_id !== undefined &&
+        activity_id !== null
+      ) {
+        await syncActivityActualCost(activity_id);
+      }
+
       return res.json({
         success: true,
         message: "Daily cost updated successfully",
@@ -378,6 +451,17 @@ router.post("/", async (req, res) => {
         message: "Failed to create daily cost",
         error: error.message
       });
+    }
+
+        // =================================================
+    // SYNC WORK ACTIVITY ACTUAL COST
+    // =================================================
+
+    if (
+      activity_id !== undefined &&
+      activity_id !== null
+    ) {
+      await syncActivityActualCost(activity_id);
     }
 
     return res.status(201).json({
@@ -945,3 +1029,5 @@ router.delete("/:id", async (req, res) => {
 // =====================================================
 
 module.exports = router;
+
+

@@ -1,4 +1,4 @@
-﻿const express = require("express");
+const express = require("express");
 const dotenv = require("dotenv");
 
 dotenv.config();
@@ -20,6 +20,7 @@ const resourcePlanningRouter = require("./src/routes/resourcePlanning");
 const resourcePerformanceRouter = require("./src/routes/resourcePerformance");
 const resourceProductivityRouter = require("./src/routes/resourceProductivity");
 const resourceProductivitySummaryRouter = require("./src/routes/resourceProductivitySummary");
+
 const resourceCostRouter = require("./src/routes/resourceCost");
 const resourceCostPerformanceRouter = require("./src/routes/resourceCostPerformance");
 const resourceCostSummaryRouter = require("./src/routes/resourceCostSummary");
@@ -27,9 +28,17 @@ const resourceUtilizationRouter = require("./src/routes/resourceUtilization");
 
 const dailyProductionRouter = require("./src/routes/dailyProduction");
 const dailyWorkRouter = require("./src/routes/dailyWork");
-const activityControlRouter = require("./src/routes/activityControl");
 
+const activityControlRouter = require("./src/routes/activityControl");
+const projectControlRouter = require("./src/routes/projectControl");
+const decisionControlRouter = require("./src/routes/decisionControl");
+const projectHealthRouter = require("./src/routes/projectHealth");
+const correctiveActionsRouter = require("./src/routes/correctiveActions");
+
+// =====================================================
 // DOCUMENTS
+// =====================================================
+
 const documentsRouter = require("./src/routes/documents");
 
 const manpowerRouter = require("./src/routes/manpower");
@@ -261,10 +270,46 @@ app.use(
 );
 
 // =====================================================
+// PROJECT CONTROL
+// =====================================================
+
+app.use(
+  "/api/project-control",
+  projectControlRouter
+);
+
+// =====================================================
+// CENTRAL DECISION CONTROL
+// =====================================================
+
+app.use(
+  "/api/decision-control",
+  decisionControlRouter
+);
+
+// =====================================================
+// PROJECT HEALTH
+// =====================================================
+
+app.use(
+  "/api/project-health",
+  projectHealthRouter
+);
+
+  // =====================================================
+  // CORRECTIVE ACTIONS
+  // =====================================================
+
+  app.use(
+    "/api/corrective-actions",
+    correctiveActionsRouter
+  );
+
+// =====================================================
 // DOCUMENTS
 // =====================================================
 //
-// Supports the future document workflow:
+// Supports:
 //
 // Project
 // Activity
@@ -273,8 +318,18 @@ app.use(
 // Invoice
 // Payment
 //
-// File examples:
-// DWG / DXF / PDF / XLSX / XLS / CSV / DOCX / JPG / PNG / ZIP
+// File types:
+//
+// DWG
+// DXF
+// PDF
+// XLSX
+// XLS
+// CSV
+// DOCX
+// JPG
+// PNG
+// ZIP
 //
 // =====================================================
 
@@ -404,3 +459,4 @@ app.listen(PORT, () => {
   console.log("http://localhost:" + PORT);
   console.log("-----------------------------------");
 });
+

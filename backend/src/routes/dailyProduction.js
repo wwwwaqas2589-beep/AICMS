@@ -291,8 +291,55 @@ router.post("/", async (req, res) => {
           "Failed to create daily production",
         error: productionError.message
       });
+    }    
+    // =================================================
+    // SYNC WORK ACTIVITY ACTUAL HOURS
+    // Source of truth: daily_production
+    // =================================================
+
+    const { data: activityProductionHours, error: hoursError } =
+      await supabase
+        .from("daily_production")
+        .select("working_hours")
+        .eq("activity_id", activity_id)
+        .eq("project_id", project_id);
+
+    if (hoursError) {
+      return res.status(500).json({
+        success: false,
+        message:
+          "Daily production created but actual hours calculation failed",
+        error: hoursError.message
+      });
     }
 
+    const actualHours =
+      (activityProductionHours || []).reduce(
+        (sum, item) =>
+          sum + Number(item.working_hours || 0),
+        0
+      );
+
+    const roundedActualHours =
+      Number(actualHours.toFixed(2));
+
+    const { error: actualHoursUpdateError } =
+      await supabase
+        .from("work_activities")
+        .update({
+          actual_hours: roundedActualHours
+        })
+        .eq("id", activity_id)
+        .eq("project_id", project_id);
+
+    if (actualHoursUpdateError) {
+      return res.status(500).json({
+        success: false,
+        message:
+          "Daily production created but activity actual hours update failed",
+        error: actualHoursUpdateError.message
+      });
+    }
 
     // =================================================
     // FINAL COMPLETED QUANTITY
