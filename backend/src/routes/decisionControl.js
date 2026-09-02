@@ -1,45 +1,50 @@
-const express = require("express");
+﻿const express = require("express");
 const router = express.Router();
 
 const supabase = require("../config/supabase");
+
+const {
+  createOrReuseCorrectiveAction
+} = require("../../services/correctiveActionService");
+
 
 // =====================================================
 // AICMS CENTRAL DECISION CONTROL
 // =====================================================
 //
 // Project
-//   ?
+//   â†“
 // Project Control
-//   ?
+//   â†“
 // Activity Control
-//   ?
+//   â†“
 // EVM / Cost / Schedule / Productivity
-//   ?
+//   â†“
 // Alerts
-//   ?
+//   â†“
 // Central Decision Engine
-//   ?
+//   â†“
 // Management Decision
-//   ?
+//   â†“
 // Recommended Actions
-//   ?
+//   â†“
 // Automatic Corrective Actions
 //
 // IMPORTANT RULE
 // -----------------------------------------------------
-// Decision Control detects current project conditions.
+// Decision Control detects the condition.
 //
-// Corrective Actions are management records.
+// Corrective Action is a management record.
 //
-// A completed corrective action MUST NOT be
-// automatically reopened.
+// COMPLETED corrective action:
+// - MUST NOT be reopened
+// - MUST NOT be duplicated while same condition remains
 //
-// If the condition remains critical:
+// OPEN / IN_PROGRESS:
+// - Reuse existing action
 //
-// - Decision Control remains CRITICAL
-// - Recommended actions remain visible
-// - Existing corrective action remains unchanged
-// - No duplicate corrective action is created
+// No existing action:
+// - Create new OPEN action
 //
 // =====================================================
 
@@ -52,12 +57,11 @@ router.get("/:projectId", async (req, res) => {
 
   try {
 
-    const projectId = Number(req.params.projectId);
-
-
     // ===================================================
     // VALIDATE PROJECT ID
     // ===================================================
+
+    const projectId = Number(req.params.projectId);
 
     if (
       !Number.isInteger(projectId) ||
@@ -65,12 +69,8 @@ router.get("/:projectId", async (req, res) => {
     ) {
 
       return res.status(400).json({
-
         success: false,
-
-        message:
-          "projectId must be a valid positive integer"
-
+        message: "projectId must be a valid positive integer"
       });
 
     }
@@ -84,31 +84,18 @@ router.get("/:projectId", async (req, res) => {
       data: project,
       error: projectError
     } = await supabase
-
       .from("projects")
-
       .select("*")
-
-      .eq(
-        "id",
-        projectId
-      )
-
+      .eq("id", projectId)
       .maybeSingle();
 
 
     if (projectError) {
 
       return res.status(500).json({
-
         success: false,
-
-        message:
-          "Failed to fetch project",
-
-        error:
-          projectError.message
-
+        message: "Failed to fetch project",
+        error: projectError.message
       });
 
     }
@@ -117,12 +104,8 @@ router.get("/:projectId", async (req, res) => {
     if (!project) {
 
       return res.status(404).json({
-
         success: false,
-
-        message:
-          "Project not found"
-
+        message: "Project not found"
       });
 
     }
@@ -136,36 +119,20 @@ router.get("/:projectId", async (req, res) => {
       data: activities,
       error: activitiesError
     } = await supabase
-
       .from("work_activities")
-
       .select("*")
-
-      .eq(
-        "project_id",
-        projectId
-      )
-
-      .order(
-        "id",
-        {
-          ascending: true
-        }
-      );
+      .eq("project_id", projectId)
+      .order("id", {
+        ascending: true
+      });
 
 
     if (activitiesError) {
 
       return res.status(500).json({
-
         success: false,
-
-        message:
-          "Failed to fetch project activities",
-
-        error:
-          activitiesError.message
-
+        message: "Failed to fetch project activities",
+        error: activitiesError.message
       });
 
     }
@@ -179,36 +146,20 @@ router.get("/:projectId", async (req, res) => {
       data: production,
       error: productionError
     } = await supabase
-
       .from("daily_production")
-
       .select("*")
-
-      .eq(
-        "project_id",
-        projectId
-      )
-
-      .order(
-        "production_date",
-        {
-          ascending: false
-        }
-      );
+      .eq("project_id", projectId)
+      .order("production_date", {
+        ascending: false
+      });
 
 
     if (productionError) {
 
       return res.status(500).json({
-
         success: false,
-
-        message:
-          "Failed to fetch project production",
-
-        error:
-          productionError.message
-
+        message: "Failed to fetch project production",
+        error: productionError.message
       });
 
     }
@@ -222,36 +173,20 @@ router.get("/:projectId", async (req, res) => {
       data: costs,
       error: costsError
     } = await supabase
-
       .from("daily_costs")
-
       .select("*")
-
-      .eq(
-        "project_id",
-        projectId
-      )
-
-      .order(
-        "cost_date",
-        {
-          ascending: false
-        }
-      );
+      .eq("project_id", projectId)
+      .order("cost_date", {
+        ascending: false
+      });
 
 
     if (costsError) {
 
       return res.status(500).json({
-
         success: false,
-
-        message:
-          "Failed to fetch project costs",
-
-        error:
-          costsError.message
-
+        message: "Failed to fetch project costs",
+        error: costsError.message
       });
 
     }
@@ -265,36 +200,20 @@ router.get("/:projectId", async (req, res) => {
       data: planning,
       error: planningError
     } = await supabase
-
       .from("project_planning")
-
       .select("*")
-
-      .eq(
-        "project_id",
-        projectId
-      )
-
-      .order(
-        "id",
-        {
-          ascending: true
-        }
-      );
+      .eq("project_id", projectId)
+      .order("id", {
+        ascending: true
+      });
 
 
     if (planningError) {
 
       return res.status(500).json({
-
         success: false,
-
-        message:
-          "Failed to fetch planning baseline",
-
-        error:
-          planningError.message
-
+        message: "Failed to fetch planning baseline",
+        error: planningError.message
       });
 
     }
@@ -305,23 +224,23 @@ router.get("/:projectId", async (req, res) => {
     // ===================================================
 
     let plannedQuantity = 0;
-
     let completedQuantity = 0;
 
+    (activities || []).forEach((activity) => {
 
-    (activities || []).forEach(
-      (activity) => {
+      const planned = Number(activity.planned_quantity);
 
-        plannedQuantity += Number(
-          activity.planned_quantity || 0
-        );
+      const completed = Number(activity.completed_quantity);
 
-        completedQuantity += Number(
-          activity.completed_quantity || 0
-        );
+      plannedQuantity += Number.isFinite(planned)
+        ? planned
+        : 0;
 
-      }
-    );
+      completedQuantity += Number.isFinite(completed)
+        ? completed
+        : 0;
+
+    });
 
 
     // ===================================================
@@ -330,28 +249,20 @@ router.get("/:projectId", async (req, res) => {
 
     let actualProgress = 0;
 
-
-    if (
-      plannedQuantity > 0
-    ) {
+    if (plannedQuantity > 0) {
 
       actualProgress =
-        (
-          completedQuantity /
-          plannedQuantity
-        ) * 100;
+        (completedQuantity / plannedQuantity) * 100;
 
     }
 
-
-    actualProgress =
-      Math.min(
-        Math.max(
-          actualProgress,
-          0
-        ),
-        100
-      );
+    actualProgress = Math.min(
+      Math.max(
+        Number(actualProgress) || 0,
+        0
+      ),
+      100
+    );
 
 
     // ===================================================
@@ -360,24 +271,21 @@ router.get("/:projectId", async (req, res) => {
 
     let budgetCost = 0;
 
+    (activities || []).forEach((activity) => {
 
-    (activities || []).forEach(
-      (activity) => {
+      const budgetValue =
+        activity.budget_cost ??
+        activity.planned_cost ??
+        activity.total_budget ??
+        0;
 
-        budgetCost += Number(
+      const budget = Number(budgetValue);
 
-          activity.budget_cost ||
-
-          activity.planned_cost ||
-
-          activity.total_budget ||
-
-          0
-
-        );
-
+      if (Number.isFinite(budget)) {
+        budgetCost += budget;
       }
-    );
+
+    });
 
 
     // ===================================================
@@ -393,46 +301,54 @@ router.get("/:projectId", async (req, res) => {
     let materialCost = 0;
 
 
-    (costs || []).forEach(
-      (item) => {
+    (costs || []).forEach((item) => {
 
-        manpowerCost += Number(
-          item.manpower_cost || 0
-        );
+      const manpower =
+        Number(item.manpower_cost || 0);
 
-        equipmentCost += Number(
-          item.equipment_cost || 0
-        );
+      const equipment =
+        Number(item.equipment_cost || 0);
 
-        materialCost += Number(
-          item.material_cost || 0
-        );
+      const material =
+        Number(item.material_cost || 0);
 
 
-        const calculatedCost =
-
-          Number(
-            item.manpower_cost || 0
-          ) +
-
-          Number(
-            item.equipment_cost || 0
-          ) +
-
-          Number(
-            item.material_cost || 0
-          );
-
-
-        actualCost += Number(
-
-          item.total_cost ??
-          calculatedCost
-
-        );
-
+      if (Number.isFinite(manpower)) {
+        manpowerCost += manpower;
       }
-    );
+
+      if (Number.isFinite(equipment)) {
+        equipmentCost += equipment;
+      }
+
+      if (Number.isFinite(material)) {
+        materialCost += material;
+      }
+
+
+      const calculatedCost =
+        (Number.isFinite(manpower) ? manpower : 0) +
+        (Number.isFinite(equipment) ? equipment : 0) +
+        (Number.isFinite(material) ? material : 0);
+
+
+      const hasTotalCost =
+        item.total_cost !== null &&
+        item.total_cost !== undefined &&
+        item.total_cost !== "";
+
+
+      const rowTotalCost =
+        hasTotalCost
+          ? Number(item.total_cost)
+          : calculatedCost;
+
+
+      actualCost += Number.isFinite(rowTotalCost)
+        ? rowTotalCost
+        : calculatedCost;
+
+    });
 
 
     // ===================================================
@@ -440,19 +356,13 @@ router.get("/:projectId", async (req, res) => {
     // ===================================================
 
     const budgetRatePerUnit =
-
       plannedQuantity > 0
-
-        ? budgetCost /
-          plannedQuantity
-
+        ? budgetCost / plannedQuantity
         : 0;
 
 
     const earnedValue =
-
-      budgetRatePerUnit *
-      completedQuantity;
+      budgetRatePerUnit * completedQuantity;
 
 
     // ===================================================
@@ -477,87 +387,62 @@ router.get("/:projectId", async (req, res) => {
 
       const validActivityIds =
         new Set(
-
           (activities || []).map(
-            (activity) =>
-              Number(activity.id)
+            (activity) => Number(activity.id)
           )
-
         );
 
 
       const validPlanning =
-        planning.filter(
+        planning.filter((item) => {
 
-          (item) =>
+          const activityId =
+            Number(item.activity_id);
 
-            validActivityIds.has(
-              Number(item.activity_id)
-            )
+          const hasStartDate =
+            item.baseline_start_date ||
+            item.start_date;
 
-            &&
+          return (
+            validActivityIds.has(activityId) &&
+            Boolean(hasStartDate)
+          );
 
-            (
-              item.baseline_start_date ||
-              item.start_date
-            )
-
-        );
+        });
 
 
-      if (
-        validPlanning.length > 0
-      ) {
+      if (validPlanning.length > 0) {
 
         const startDates =
-
           validPlanning
-
             .map(
               (item) =>
                 item.baseline_start_date ||
                 item.start_date
             )
-
             .filter(Boolean)
-
             .sort();
 
 
         const finishDates =
-
           validPlanning
-
             .map(
               (item) =>
                 item.baseline_finish_date ||
                 item.finish_date
             )
-
             .filter(Boolean)
-
             .sort();
 
 
-        if (
-          startDates.length > 0
-        ) {
-
-          baselineStartDate =
-            startDates[0];
-
+        if (startDates.length > 0) {
+          baselineStartDate = startDates[0];
         }
 
 
-        if (
-          finishDates.length > 0
-        ) {
-
+        if (finishDates.length > 0) {
           baselineFinishDate =
-            finishDates[
-              finishDates.length - 1
-            ];
-
+            finishDates[finishDates.length - 1];
         }
 
       }
@@ -574,73 +459,56 @@ router.get("/:projectId", async (req, res) => {
       baselineFinishDate
     ) {
 
-      const today =
-        new Date();
-
+      const today = new Date();
 
       const todayString =
-        today
-          .toISOString()
-          .slice(
-            0,
-            10
-          );
+        today.toISOString().slice(0, 10);
 
 
       const start =
         new Date(
-          `${baselineStartDate}T00:00:00`
+          String(baselineStartDate) + "T00:00:00"
         );
 
 
       const finish =
         new Date(
-          `${baselineFinishDate}T00:00:00`
+          String(baselineFinishDate) + "T00:00:00"
         );
 
 
       const current =
         new Date(
-          `${todayString}T00:00:00`
+          String(todayString) + "T00:00:00"
         );
 
 
       const totalDuration =
-        finish.getTime() -
-        start.getTime();
+        finish.getTime() - start.getTime();
 
 
-      if (
-        totalDuration > 0
-      ) {
+      if (totalDuration > 0) {
 
         const elapsedDuration =
-          current.getTime() -
-          start.getTime();
+          current.getTime() - start.getTime();
 
 
         plannedProgress =
-          (
-            elapsedDuration /
-            totalDuration
-          ) * 100;
+          (elapsedDuration / totalDuration) * 100;
 
       }
 
       else if (
-        current.getTime() >=
-        finish.getTime()
+        current.getTime() >= finish.getTime()
       ) {
 
-        plannedProgress =
-          100;
+        plannedProgress = 100;
 
       }
 
       else {
 
-        plannedProgress =
-          0;
+        plannedProgress = 0;
 
       }
 
@@ -658,41 +526,29 @@ router.get("/:projectId", async (req, res) => {
     ) {
 
       const plannedProgressValues =
-
         planning
+          .map((item) => {
 
-          .map(
-            (item) => {
+            if (
+              item.planned_progress !== null &&
+              item.planned_progress !== undefined &&
+              item.planned_progress !== ""
+            ) {
 
-              if (
-                item.planned_progress !== null &&
-                item.planned_progress !== undefined &&
-                item.planned_progress !== ""
-              ) {
+              const value =
+                Number(item.planned_progress);
 
-                const value =
-                  Number(
-                    item.planned_progress
-                  );
-
-
-                return Number.isFinite(
-                  value
-                )
-                  ? value
-                  : null;
-
-              }
-
-
-              return null;
+              return Number.isFinite(value)
+                ? value
+                : null;
 
             }
-          )
 
+            return null;
+
+          })
           .filter(
-            (value) =>
-              value !== null
+            (value) => value !== null
           );
 
 
@@ -701,16 +557,10 @@ router.get("/:projectId", async (req, res) => {
       ) {
 
         plannedProgress =
-
           plannedProgressValues.reduce(
-
-            (sum, value) =>
-              sum + value,
-
+            (sum, value) => sum + value,
             0
-
           ) /
-
           plannedProgressValues.length;
 
       }
@@ -724,30 +574,28 @@ router.get("/:projectId", async (req, res) => {
 
     if (
       plannedProgress <= 0 &&
-
       project.planned_progress !== null &&
-
-      project.planned_progress !== undefined
+      project.planned_progress !== undefined &&
+      project.planned_progress !== ""
     ) {
 
-      plannedProgress =
-        Number(
-          project.planned_progress
-        );
+      const projectProgress =
+        Number(project.planned_progress);
+
+      if (Number.isFinite(projectProgress)) {
+        plannedProgress = projectProgress;
+      }
 
     }
 
 
     plannedProgress =
       Math.min(
-
         Math.max(
-          plannedProgress,
+          Number(plannedProgress) || 0,
           0
         ),
-
         100
-
       );
 
 
@@ -756,12 +604,8 @@ router.get("/:projectId", async (req, res) => {
     // ===================================================
 
     const plannedValue =
-
       budgetCost *
-      (
-        plannedProgress /
-        100
-      );
+      (plannedProgress / 100);
 
 
     // ===================================================
@@ -769,34 +613,22 @@ router.get("/:projectId", async (req, res) => {
     // ===================================================
 
     const costVariance =
-
-      earnedValue -
-      actualCost;
+      earnedValue - actualCost;
 
 
     const scheduleVariance =
-
-      earnedValue -
-      plannedValue;
+      earnedValue - plannedValue;
 
 
     const cpi =
-
       actualCost > 0
-
-        ? earnedValue /
-          actualCost
-
+        ? earnedValue / actualCost
         : 0;
 
 
     const spi =
-
       plannedValue > 0
-
-        ? earnedValue /
-          plannedValue
-
+        ? earnedValue / plannedValue
         : 0;
 
 
@@ -813,53 +645,39 @@ router.get("/:projectId", async (req, res) => {
     let tcpi = 0;
 
 
-    if (
-      cpi > 0
-    ) {
+    if (cpi > 0) {
 
       eac =
-
-        budgetCost /
-        cpi;
+        budgetCost / cpi;
 
 
       etc =
-
         Math.max(
-
-          eac -
-          actualCost,
-
+          eac - actualCost,
           0
-
         );
 
 
       vac =
-
-        budgetCost -
-        eac;
+        budgetCost - eac;
 
     }
 
 
+    // ===================================================
+    // TCPI
+    // ===================================================
+
     const budgetRemaining =
-
-      budgetCost -
-      actualCost;
+      budgetCost - actualCost;
 
 
-    if (
-      budgetRemaining > 0
-    ) {
+    if (budgetRemaining > 0) {
 
       tcpi =
-
         (
-          budgetCost -
-          earnedValue
+          budgetCost - earnedValue
         ) /
-
         budgetRemaining;
 
     }
@@ -874,8 +692,7 @@ router.get("/:projectId", async (req, res) => {
 
 
     if (
-      actualProgress <
-      plannedProgress
+      actualProgress < plannedProgress
     ) {
 
       scheduleStatus =
@@ -884,8 +701,7 @@ router.get("/:projectId", async (req, res) => {
     }
 
     else if (
-      actualProgress >
-      plannedProgress
+      actualProgress > plannedProgress
     ) {
 
       scheduleStatus =
@@ -902,18 +718,14 @@ router.get("/:projectId", async (req, res) => {
       "ON_BUDGET";
 
 
-    if (
-      costVariance < 0
-    ) {
+    if (costVariance < 0) {
 
       costStatus =
         "OVER_BUDGET";
 
     }
 
-    else if (
-      costVariance > 0
-    ) {
+    else if (costVariance > 0) {
 
       costStatus =
         "UNDER_BUDGET";
@@ -929,24 +741,20 @@ router.get("/:projectId", async (req, res) => {
 
 
     // ===================================================
-    // COST
+    // COST ALERT
     // ===================================================
 
     if (
-      costStatus ===
-      "OVER_BUDGET"
+      costStatus === "OVER_BUDGET"
     ) {
 
       flags.push({
 
-        category:
-          "COST",
+        category: "COST",
 
-        severity:
-          "CRITICAL",
+        severity: "CRITICAL",
 
-        code:
-          "PROJECT_OVER_BUDGET",
+        code: "PROJECT_OVER_BUDGET",
 
         message:
           "Actual project cost is above earned-value budget."
@@ -957,7 +765,7 @@ router.get("/:projectId", async (req, res) => {
 
 
     // ===================================================
-    // CPI
+    // CPI ALERT
     // ===================================================
 
     if (
@@ -967,14 +775,11 @@ router.get("/:projectId", async (req, res) => {
 
       flags.push({
 
-        category:
-          "COST",
+        category: "COST",
 
-        severity:
-          "CRITICAL",
+        severity: "CRITICAL",
 
-        code:
-          "LOW_CPI",
+        code: "LOW_CPI",
 
         message:
           "Project CPI is below the acceptable threshold of 0.90."
@@ -985,7 +790,7 @@ router.get("/:projectId", async (req, res) => {
 
 
     // ===================================================
-    // SPI
+    // SPI ALERT
     // ===================================================
 
     if (
@@ -995,14 +800,11 @@ router.get("/:projectId", async (req, res) => {
 
       flags.push({
 
-        category:
-          "SCHEDULE",
+        category: "SCHEDULE",
 
-        severity:
-          "CRITICAL",
+        severity: "CRITICAL",
 
-        code:
-          "LOW_SPI",
+        code: "LOW_SPI",
 
         message:
           "Project SPI is below the acceptable threshold of 0.90."
@@ -1013,24 +815,20 @@ router.get("/:projectId", async (req, res) => {
 
 
     // ===================================================
-    // BEHIND
+    // PROJECT BEHIND ALERT
     // ===================================================
 
     if (
-      scheduleStatus ===
-      "BEHIND"
+      scheduleStatus === "BEHIND"
     ) {
 
       flags.push({
 
-        category:
-          "SCHEDULE",
+        category: "SCHEDULE",
 
-        severity:
-          "CRITICAL",
+        severity: "CRITICAL",
 
-        code:
-          "PROJECT_BEHIND",
+        code: "PROJECT_BEHIND",
 
         message:
           "Actual project progress is behind planned progress."
@@ -1041,7 +839,7 @@ router.get("/:projectId", async (req, res) => {
 
 
     // ===================================================
-    // EAC
+    // EAC ALERT
     // ===================================================
 
     if (
@@ -1052,24 +850,18 @@ router.get("/:projectId", async (req, res) => {
 
       flags.push({
 
-        category:
-          "FORECAST",
+        category: "FORECAST",
 
-        severity:
-          "CRITICAL",
+        severity: "CRITICAL",
 
-        code:
-          "EAC_OVERRUN",
+        code: "EAC_OVERRUN",
 
         message:
           "Forecast final project cost exceeds approved budget.",
 
         forecast_overrun:
           Number(
-            (
-              eac -
-              budgetCost
-            ).toFixed(2)
+            (eac - budgetCost).toFixed(2)
           )
 
       });
@@ -1078,7 +870,7 @@ router.get("/:projectId", async (req, res) => {
 
 
     // ===================================================
-    // TCPI
+    // TCPI ALERT
     // ===================================================
 
     if (
@@ -1087,14 +879,11 @@ router.get("/:projectId", async (req, res) => {
 
       flags.push({
 
-        category:
-          "FORECAST",
+        category: "FORECAST",
 
-        severity:
-          "CRITICAL",
+        severity: "CRITICAL",
 
-        code:
-          "HIGH_TCPI",
+        code: "HIGH_TCPI",
 
         message:
           "Required future cost efficiency is significantly above 1.20."
@@ -1111,303 +900,249 @@ router.get("/:projectId", async (req, res) => {
     const criticalActivities = [];
 
 
-    (activities || []).forEach(
-      (activity) => {
+    (activities || []).forEach((activity) => {
 
-        const planned =
-          Number(
-            activity.planned_quantity || 0
-          );
-
-
-        const completed =
-          Number(
-            activity.completed_quantity || 0
-          );
+      const planned =
+        Number(
+          activity.planned_quantity || 0
+        );
 
 
-        const budget =
-          Number(
+      const completed =
+        Number(
+          activity.completed_quantity || 0
+        );
 
-            activity.budget_cost ||
 
-            activity.planned_cost ||
+      const budget =
+        Number(
+          activity.budget_cost ??
+          activity.planned_cost ??
+          activity.total_budget ??
+          0
+        );
 
-            activity.total_budget ||
 
+      let progress = 0;
+
+
+      if (planned > 0) {
+
+        progress =
+          (completed / planned) * 100;
+
+      }
+
+
+      progress =
+        Math.min(
+          Math.max(
+            Number(progress) || 0,
             0
-
-          );
-
-
-        let progress = 0;
+          ),
+          100
+        );
 
 
-        if (
-          planned > 0
-        ) {
+      // =================================================
+      // ACTIVITY BASELINE PROGRESS
+      // =================================================
 
-          progress =
-            (
-              completed /
-              planned
-            ) * 100;
+      let plannedActivityProgress = 0;
 
+
+      const activityPlanning =
+        (planning || []).filter(
+          (item) =>
+            Number(item.activity_id) ===
+            Number(activity.id)
+        );
+
+
+      let activityStartDate = null;
+
+      let activityFinishDate = null;
+
+
+      if (
+        activityPlanning.length > 0
+      ) {
+
+        const startDates =
+          activityPlanning
+            .map(
+              (item) =>
+                item.baseline_start_date ||
+                item.start_date
+            )
+            .filter(Boolean)
+            .sort();
+
+
+        const finishDates =
+          activityPlanning
+            .map(
+              (item) =>
+                item.baseline_finish_date ||
+                item.finish_date
+            )
+            .filter(Boolean)
+            .sort();
+
+
+        if (startDates.length > 0) {
+          activityStartDate = startDates[0];
         }
 
 
-        // =================================================
-        // ACTIVITY BASELINE PROGRESS
-        // =================================================
+        if (finishDates.length > 0) {
+          activityFinishDate =
+            finishDates[finishDates.length - 1];
+        }
 
-        let plannedActivityProgress =
-          0;
+      }
 
 
-        const activityPlanning =
-          (planning || []).filter(
+      // =================================================
+      // ACTIVITY BASELINE DATE CALCULATION
+      // =================================================
 
-            (item) =>
+      if (
+        activityStartDate &&
+        activityFinishDate
+      ) {
 
-              Number(
-                item.activity_id
-              ) ===
+        const today = new Date();
 
-              Number(
-                activity.id
-              )
+        const todayString =
+          today.toISOString().slice(0, 10);
 
+
+        const start =
+          new Date(
+            String(activityStartDate) + "T00:00:00"
           );
 
 
-        let activityStartDate =
-          null;
+        const finish =
+          new Date(
+            String(activityFinishDate) + "T00:00:00"
+          );
 
 
-        let activityFinishDate =
-          null;
+        const current =
+          new Date(
+            String(todayString) + "T00:00:00"
+          );
 
 
-        if (
-          activityPlanning.length > 0
-        ) {
-
-          const startDates =
-
-            activityPlanning
-
-              .map(
-                (item) =>
-                  item.baseline_start_date ||
-                  item.start_date
-              )
-
-              .filter(Boolean)
-
-              .sort();
+        const totalDuration =
+          finish.getTime() - start.getTime();
 
 
-          const finishDates =
+        if (totalDuration > 0) {
 
-            activityPlanning
-
-              .map(
-                (item) =>
-                  item.baseline_finish_date ||
-                  item.finish_date
-              )
-
-              .filter(Boolean)
-
-              .sort();
+          const elapsedDuration =
+            current.getTime() - start.getTime();
 
 
-          if (
-            startDates.length > 0
-          ) {
-
-            activityStartDate =
-              startDates[0];
-
-          }
-
-
-          if (
-            finishDates.length > 0
-          ) {
-
-            activityFinishDate =
-              finishDates[
-                finishDates.length - 1
-              ];
-
-          }
+          plannedActivityProgress =
+            (elapsedDuration / totalDuration) * 100;
 
         }
 
-
-        // =================================================
-        // ACTIVITY BASELINE DATE CALCULATION
-        // =================================================
-
-        if (
-          activityStartDate &&
-          activityFinishDate
+        else if (
+          current.getTime() >= finish.getTime()
         ) {
 
-          const today =
-            new Date();
-
-
-          const todayString =
-            today
-              .toISOString()
-              .slice(
-                0,
-                10
-              );
-
-
-          const start =
-            new Date(
-              `${activityStartDate}T00:00:00`
-            );
-
-
-          const finish =
-            new Date(
-              `${activityFinishDate}T00:00:00`
-            );
-
-
-          const current =
-            new Date(
-              `${todayString}T00:00:00`
-            );
-
-
-          const totalDuration =
-            finish.getTime() -
-            start.getTime();
-
-
-          if (
-            totalDuration > 0
-          ) {
-
-            const elapsedDuration =
-              current.getTime() -
-              start.getTime();
-
-
-            plannedActivityProgress =
-              (
-                elapsedDuration /
-                totalDuration
-              ) * 100;
-
-          }
-
-          else if (
-            current.getTime() >=
-            finish.getTime()
-          ) {
-
-            plannedActivityProgress =
-              100;
-
-          }
-
-          else {
-
-            plannedActivityProgress =
-              0;
-
-          }
+          plannedActivityProgress = 100;
 
         }
 
         else {
 
-          plannedActivityProgress =
-            Number(
-
-              activity.planned_progress ||
-
-              activity.progress_percent ||
-
-              0
-
-            );
-
-        }
-
-
-        plannedActivityProgress =
-          Math.min(
-
-            Math.max(
-              plannedActivityProgress,
-              0
-            ),
-
-            100
-
-          );
-
-
-        // =================================================
-        // CRITICAL ACTIVITY
-        // =================================================
-
-        if (
-          progress <
-          plannedActivityProgress
-        ) {
-
-          criticalActivities.push({
-
-            id:
-              activity.id,
-
-            activity_code:
-              activity.activity_code,
-
-            activity_name:
-              activity.activity_name,
-
-            planned_progress:
-              Number(
-                plannedActivityProgress.toFixed(2)
-              ),
-
-            actual_progress:
-              Number(
-                progress.toFixed(2)
-              ),
-
-            progress_variance:
-              Number(
-                (
-                  progress -
-                  plannedActivityProgress
-                ).toFixed(2)
-              ),
-
-            budget_cost:
-              Number(
-                budget.toFixed(2)
-              ),
-
-            status:
-              "BEHIND"
-
-          });
+          plannedActivityProgress = 0;
 
         }
 
       }
-    );
+
+      else {
+
+        plannedActivityProgress =
+          Number(
+            activity.planned_progress ??
+            activity.progress_percent ??
+            0
+          );
+
+      }
+
+
+      plannedActivityProgress =
+        Math.min(
+          Math.max(
+            Number(plannedActivityProgress) || 0,
+            0
+          ),
+          100
+        );
+
+
+      // =================================================
+      // CRITICAL ACTIVITY
+      // =================================================
+
+      if (
+        progress < plannedActivityProgress
+      ) {
+
+        criticalActivities.push({
+
+          id:
+            activity.id,
+
+          activity_code:
+            activity.activity_code,
+
+          activity_name:
+            activity.activity_name,
+
+          planned_progress:
+            Number(
+              plannedActivityProgress.toFixed(2)
+            ),
+
+          actual_progress:
+            Number(
+              progress.toFixed(2)
+            ),
+
+          progress_variance:
+            Number(
+              (
+                progress -
+                plannedActivityProgress
+              ).toFixed(2)
+            ),
+
+          budget_cost:
+            Number(
+              (
+                Number.isFinite(budget)
+                  ? budget
+                  : 0
+              ).toFixed(2)
+            ),
+
+          status:
+            "BEHIND"
+
+        });
+
+      }
+
+    });
 
 
     // ===================================================
@@ -1434,17 +1169,11 @@ router.get("/:projectId", async (req, res) => {
     // ===================================================
 
     if (
-
-      costStatus ===
-      "OVER_BUDGET"
-
-      ||
-
+      costStatus === "OVER_BUDGET" ||
       (
         cpi > 0 &&
         cpi < 0.90
       )
-
     ) {
 
       overallStatus =
@@ -1515,17 +1244,11 @@ router.get("/:projectId", async (req, res) => {
     // ===================================================
 
     if (
-
-      scheduleStatus ===
-      "BEHIND"
-
-      ||
-
+      scheduleStatus === "BEHIND" ||
       (
         spi > 0 &&
         spi < 0.90
       )
-
     ) {
 
       overallStatus =
@@ -1600,18 +1323,11 @@ router.get("/:projectId", async (req, res) => {
     // ===================================================
 
     if (
-
-      overallStatus ===
-      "NORMAL"
-
-      &&
-
+      overallStatus === "NORMAL" &&
       flags.some(
         (flag) =>
-          flag.severity ===
-          "CRITICAL"
+          flag.severity === "CRITICAL"
       )
-
     ) {
 
       overallStatus =
@@ -1633,14 +1349,8 @@ router.get("/:projectId", async (req, res) => {
     // ===================================================
 
     if (
-
-      overallStatus ===
-      "NORMAL"
-
-      &&
-
+      overallStatus === "NORMAL" &&
       flags.length > 0
-
     ) {
 
       overallStatus =
@@ -1662,294 +1372,82 @@ router.get("/:projectId", async (req, res) => {
     // ===================================================
 
     const uniqueActions =
-      [
-        ...new Set(actions)
-      ];
+      [...new Set(actions)];
 
 
     // ===================================================
     // AUTOMATIC SCHEDULE CORRECTIVE ACTION
     // ===================================================
 
-    let automaticCorrectiveAction =
-      null;
+    let automaticCorrectiveAction = null;
 
 
     if (
-
-      overallStatus ===
-      "CRITICAL"
-
-      &&
-
-      decision ===
-      "PROJECT_SCHEDULE_RECOVERY_REQUIRED"
-
+      overallStatus === "CRITICAL" &&
+      decision === "PROJECT_SCHEDULE_RECOVERY_REQUIRED"
     ) {
 
       const criticalActivity =
-
         criticalActivities.length > 0
-
           ? criticalActivities[0]
-
           : null;
 
 
-      // =================================================
-      // CHECK EXISTING SCHEDULE ACTION
-      // PROJECT + SOURCE
-      // =================================================
+      try {
 
-      const {
-        data: existingActions,
-        error:
-          correctiveActionCheckError
-      } =
+        const correctiveResult =
+          await createOrReuseCorrectiveAction({
 
-        await supabase
+            projectId,
 
-          .from("corrective_actions")
+            activityId:
+              criticalActivity
+                ? criticalActivity.id
+                : null,
 
-          .select("*")
+            category:
+              "SCHEDULE",
 
-          .eq(
-            "project_id",
-            projectId
-          )
+            title:
+              "Recover Project Schedule",
 
-          .eq(
-            "source_code",
-            "PROJECT_SCHEDULE_RECOVERY_REQUIRED"
-          )
+            description:
+              criticalActivity
+                ? "Project schedule is behind baseline. Activity " + criticalActivity.activity_name + " requires recovery action."
+                : "Project schedule is behind the approved baseline and requires recovery action.",
 
-          .order(
-            "created_at",
-            {
-              ascending: false
-            }
-          )
+            priority,
 
-          .limit(1);
+            responsibleRole:
+              "PROJECT_MANAGER",
+
+            source:
+              "DECISION_CONTROL",
+
+            sourceCode:
+              "PROJECT_SCHEDULE_RECOVERY_REQUIRED",
+
+            actionCodePrefix:
+              "CA",
+
+            dueDays:
+              3
+
+          });
 
 
-      if (
-        correctiveActionCheckError
-      ) {
+        automaticCorrectiveAction =
+          correctiveResult?.action || null;
+
+
+      }
+
+      catch (correctiveActionError) {
 
         console.error(
-          "Corrective action check error:",
-          correctiveActionCheckError
+          "Automatic schedule corrective action error:",
+          correctiveActionError
         );
-
-      }
-
-      else if (
-
-        !existingActions ||
-
-        existingActions.length === 0
-
-      ) {
-
-        const dueDate =
-
-          new Date(
-
-            Date.now() +
-
-            (
-              3 *
-              24 *
-              60 *
-              60 *
-              1000
-            )
-
-          )
-
-            .toISOString()
-
-            .slice(
-              0,
-              10
-            );
-
-
-        const {
-          data: createdAction,
-          error:
-            correctiveActionCreateError
-        } =
-
-          await supabase
-
-            .from("corrective_actions")
-
-            .insert({
-
-              action_code:
-                `CA-${projectId}-${Date.now()}`,
-
-              project_id:
-                projectId,
-
-              activity_id:
-                criticalActivity
-                  ? criticalActivity.id
-                  : null,
-
-              category:
-                "SCHEDULE",
-
-              title:
-                "Recover Project Schedule",
-
-              description:
-
-                criticalActivity
-
-                  ? `Project schedule is behind baseline. Activity ${criticalActivity.activity_name} requires recovery action.`
-
-                  : "Project schedule is behind the approved baseline and requires recovery action.",
-
-              priority:
-                priority,
-
-              responsible_role:
-                "PROJECT_MANAGER",
-
-              source:
-                "DECISION_CONTROL",
-
-              source_code:
-                "PROJECT_SCHEDULE_RECOVERY_REQUIRED",
-
-              due_date:
-                dueDate,
-
-              status:
-                "OPEN"
-
-            })
-
-            .select()
-
-            .single();
-
-
-        if (
-          correctiveActionCreateError
-        ) {
-
-          console.error(
-
-            "Automatic schedule corrective action creation error:",
-
-            correctiveActionCreateError
-
-          );
-
-        }
-
-        else {
-
-          automaticCorrectiveAction =
-            createdAction;
-
-        }
-
-      }
-
-      else {
-
-        // =================================================
-        // REUSE ACTIVE ACTION
-        // CREATE NEW ACTION AFTER COMPLETION
-        // =================================================
-
-        const existingScheduleAction =
-          existingActions[0];
-
-        if (
-          existingScheduleAction.status === "OPEN"
-          ||
-          existingScheduleAction.status === "IN_PROGRESS"
-        ) {
-
-          automaticCorrectiveAction =
-            existingScheduleAction;
-
-        }
-
-        else if (
-          existingScheduleAction.status === "COMPLETED"
-        ) {
-
-          const dueDate =
-            new Date(
-              Date.now() +
-              (3 * 24 * 60 * 60 * 1000)
-            )
-              .toISOString()
-              .slice(0, 10);
-
-          const {
-            data: createdAction,
-            error: correctiveActionCreateError
-          } =
-            await supabase
-              .from("corrective_actions")
-              .insert({
-                action_code:
-                  `CA-${projectId}-${Date.now()}`,
-                project_id:
-                  projectId,
-                activity_id:
-                  criticalActivity
-                    ? criticalActivity.id
-                    : null,
-                category:
-                  "SCHEDULE",
-                title:
-                  "Recover Project Schedule",
-                description:
-                  criticalActivity
-                    ? `Project schedule is behind baseline. Activity ${criticalActivity.activity_name} requires recovery action.`
-                    : "Project schedule is behind the approved baseline and requires recovery action.",
-                priority:
-                  priority,
-                responsible_role:
-                  "PROJECT_MANAGER",
-                source:
-                  "DECISION_CONTROL",
-                source_code:
-                  "PROJECT_SCHEDULE_RECOVERY_REQUIRED",
-                due_date:
-                  dueDate,
-                status:
-                  "OPEN"
-              })
-              .select()
-              .single();
-
-          if (correctiveActionCreateError) {
-
-            console.error(
-              "Automatic schedule corrective action creation error:",
-              correctiveActionCreateError
-            );
-
-          }
-
-          else {
-
-            automaticCorrectiveAction =
-              createdAction;
-
-          }
-
-        }
 
       }
 
@@ -1960,286 +1458,77 @@ router.get("/:projectId", async (req, res) => {
     // AUTOMATIC COST CORRECTIVE ACTION
     // ===================================================
 
-    let automaticCostCorrectiveAction =
-      null;
+    let automaticCostCorrectiveAction = null;
+
+
+    const costControlRequired =
+      costStatus === "OVER_BUDGET" ||
+      (
+        cpi > 0 &&
+        cpi < 0.90
+      ) ||
+      (
+        eac > budgetCost &&
+        budgetCost > 0
+      );
 
 
     if (
-
-      overallStatus ===
-      "CRITICAL"
-
-      &&
-
-      (
-
-        costStatus ===
-        "OVER_BUDGET"
-
-        ||
-
-        (
-          cpi > 0 &&
-          cpi < 0.90
-        )
-
-        ||
-
-        (
-          eac > budgetCost &&
-          budgetCost > 0
-        )
-
-      )
-
+      overallStatus === "CRITICAL" &&
+      costControlRequired
     ) {
 
-      // =================================================
-      // CHECK EXISTING COST ACTION
-      // PROJECT + SOURCE
-      // =================================================
+      try {
 
-      const {
-        data: existingCostActions,
-        error:
-          costActionCheckError
-      } =
+        const costCorrectiveResult =
+          await createOrReuseCorrectiveAction({
 
-        await supabase
+            projectId,
 
-          .from("corrective_actions")
+            activityId:
+              null,
 
-          .select("*")
+            category:
+              "COST",
 
-          .eq(
-            "project_id",
-            projectId
-          )
+            title:
+              "Control Project Cost",
 
-          .eq(
-            "source_code",
-            "PROJECT_COST_CONTROL_REQUIRED"
-          )
+            description:
+              "Project cost performance is critical. Review manpower, equipment, material costs and forecast final cost.",
 
-          .order(
-            "created_at",
-            {
-              ascending: false
-            }
-          )
+            priority,
 
-          .limit(1);
+            responsibleRole:
+              "PROJECT_MANAGER",
+
+            source:
+              "DECISION_CONTROL",
+
+            sourceCode:
+              "PROJECT_COST_CONTROL_REQUIRED",
+
+            actionCodePrefix:
+              "CA-COST",
+
+            dueDays:
+              3
+
+          });
 
 
-      if (
-        costActionCheckError
-      ) {
+        automaticCostCorrectiveAction =
+          costCorrectiveResult?.action || null;
+
+
+      }
+
+      catch (costActionError) {
 
         console.error(
-
-          "Cost corrective action check error:",
-
-          costActionCheckError
-
+          "Automatic cost corrective action error:",
+          costActionError
         );
-
-      }
-
-      else if (
-
-        !existingCostActions ||
-
-        existingCostActions.length === 0
-
-      ) {
-
-        const costDueDate =
-
-          new Date(
-
-            Date.now() +
-
-            (
-              3 *
-              24 *
-              60 *
-              60 *
-              1000
-            )
-
-          )
-
-            .toISOString()
-
-            .slice(
-              0,
-              10
-            );
-
-
-        const {
-          data: createdCostAction,
-          error:
-            costActionCreateError
-        } =
-
-          await supabase
-
-            .from("corrective_actions")
-
-            .insert({
-
-              action_code:
-                `CA-COST-${projectId}-${Date.now()}`,
-
-              project_id:
-                projectId,
-
-              activity_id:
-                null,
-
-              category:
-                "COST",
-
-              title:
-                "Control Project Cost",
-
-              description:
-                "Project cost performance is critical. Review manpower, equipment, material costs and forecast final cost.",
-
-              priority:
-                priority,
-
-              responsible_role:
-                "PROJECT_MANAGER",
-
-              source:
-                "DECISION_CONTROL",
-
-              source_code:
-                "PROJECT_COST_CONTROL_REQUIRED",
-
-              due_date:
-                costDueDate,
-
-              status:
-                "OPEN"
-
-            })
-
-            .select()
-
-            .single();
-
-
-        if (
-          costActionCreateError
-        ) {
-
-          console.error(
-
-            "Automatic cost corrective action creation error:",
-
-            costActionCreateError
-
-          );
-
-        }
-
-        else {
-
-          automaticCostCorrectiveAction =
-            createdCostAction;
-
-        }
-
-      }
-
-      else {
-
-        // =================================================
-        // REUSE ACTIVE COST ACTION
-        // CREATE NEW COST ACTION AFTER COMPLETION
-        // =================================================
-
-        const existingCostAction =
-          existingCostActions[0];
-
-        if (
-          existingCostAction.status === "OPEN"
-          ||
-          existingCostAction.status === "IN_PROGRESS"
-        ) {
-
-          automaticCostCorrectiveAction =
-            existingCostAction;
-
-        }
-
-        else if (
-          existingCostAction.status === "COMPLETED"
-        ) {
-
-          const costDueDate =
-            new Date(
-              Date.now() +
-              (3 * 24 * 60 * 60 * 1000)
-            )
-              .toISOString()
-              .slice(0, 10);
-
-          const {
-            data: createdCostAction,
-            error: costActionCreateError
-          } =
-            await supabase
-              .from("corrective_actions")
-              .insert({
-                action_code:
-                  `CA-COST-${projectId}-${Date.now()}`,
-                project_id:
-                  projectId,
-                activity_id:
-                  null,
-                category:
-                  "COST",
-                title:
-                  "Control Project Cost",
-                description:
-                  "Project cost performance is critical. Review manpower, equipment, material costs and forecast final cost.",
-                priority:
-                  priority,
-                responsible_role:
-                  "PROJECT_MANAGER",
-                source:
-                  "DECISION_CONTROL",
-                source_code:
-                  "PROJECT_COST_CONTROL_REQUIRED",
-                due_date:
-                  costDueDate,
-                status:
-                  "OPEN"
-              })
-              .select()
-              .single();
-
-          if (costActionCreateError) {
-
-            console.error(
-              "Automatic cost corrective action creation error:",
-              costActionCreateError
-            );
-
-          }
-
-          else {
-
-            automaticCostCorrectiveAction =
-              createdCostAction;
-
-          }
-
-        }
 
       }
 
@@ -2252,8 +1541,7 @@ router.get("/:projectId", async (req, res) => {
 
     return res.json({
 
-      success:
-        true,
+      success: true,
 
 
       // =================================================
@@ -2291,26 +1579,21 @@ router.get("/:projectId", async (req, res) => {
       indicators: {
 
         planned_progress:
-
           Number(
             plannedProgress.toFixed(2)
           ),
 
         actual_progress:
-
           Number(
             actualProgress.toFixed(2)
           ),
 
         progress_variance:
-
           Number(
-
             (
               actualProgress -
               plannedProgress
             ).toFixed(2)
-
           ),
 
         cost_status:
@@ -2320,19 +1603,16 @@ router.get("/:projectId", async (req, res) => {
           scheduleStatus,
 
         budget_cost:
-
           Number(
             budgetCost.toFixed(2)
           ),
 
         actual_cost:
-
           Number(
             actualCost.toFixed(2)
           ),
 
         earned_value:
-
           Number(
             earnedValue.toFixed(2)
           )
@@ -2347,73 +1627,61 @@ router.get("/:projectId", async (req, res) => {
       evm: {
 
         bac:
-
           Number(
             budgetCost.toFixed(2)
           ),
 
         pv:
-
           Number(
             plannedValue.toFixed(2)
           ),
 
         ev:
-
           Number(
             earnedValue.toFixed(2)
           ),
 
         ac:
-
           Number(
             actualCost.toFixed(2)
           ),
 
         cv:
-
           Number(
             costVariance.toFixed(2)
           ),
 
         sv:
-
           Number(
             scheduleVariance.toFixed(2)
           ),
 
         cpi:
-
           Number(
             cpi.toFixed(3)
           ),
 
         spi:
-
           Number(
             spi.toFixed(3)
           ),
 
         eac:
-
           Number(
             eac.toFixed(2)
           ),
 
         etc:
-
           Number(
             etc.toFixed(2)
           ),
 
         vac:
-
           Number(
             vac.toFixed(2)
           ),
 
         tcpi:
-
           Number(
             tcpi.toFixed(3)
           )
@@ -2431,19 +1699,15 @@ router.get("/:projectId", async (req, res) => {
           flags.length,
 
         critical:
-
           flags.filter(
             (flag) =>
-              flag.severity ===
-              "CRITICAL"
+              flag.severity === "CRITICAL"
           ).length,
 
         warnings:
-
           flags.filter(
             (flag) =>
-              flag.severity ===
-              "WARNING"
+              flag.severity === "WARNING"
           ).length,
 
         items:
@@ -2469,7 +1733,7 @@ router.get("/:projectId", async (req, res) => {
 
 
       // =================================================
-      // AUTOMATIC CORRECTIVE ACTION
+      // AUTOMATIC SCHEDULE CORRECTIVE ACTION
       // =================================================
 
       automatic_corrective_action:
@@ -2491,19 +1755,16 @@ router.get("/:projectId", async (req, res) => {
       resource_costs: {
 
         manpower_cost:
-
           Number(
             manpowerCost.toFixed(2)
           ),
 
         equipment_cost:
-
           Number(
             equipmentCost.toFixed(2)
           ),
 
         material_cost:
-
           Number(
             materialCost.toFixed(2)
           )
@@ -2542,8 +1803,7 @@ router.get("/:projectId", async (req, res) => {
 
     return res.status(500).json({
 
-      success:
-        false,
+      success: false,
 
       message:
         "Decision Control failed",
